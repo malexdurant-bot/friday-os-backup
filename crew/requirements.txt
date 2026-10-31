@@ -1,0 +1,49 @@
+# ============================================================
+# XCEREBRO 2.0 CREWAI AGENT RUNTIME — REQUIREMENTS
+# ============================================================
+
+# Core agent framework
+crewai==0.100.0
+crewai-tools==0.25.8
+
+# LangGraph for stateful workflows + human approval gates
+langgraph>=0.2.0
+langchain>=0.3.0
+langchain-anthropic>=0.3.0
+langchain-openai>=0.2.0
+
+# Multi-model routing (v2.1+) — provider SDKs
+anthropic>=0.39.0
+openai>=1.55.0  # Also used for DeepSeek (OpenAI-compatible API)
+groq>=0.13.0    # Optional: ultra-fast Llama inference
+
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.9.0
+pydantic-settings>=2.6.0
+
+# Database + vector memory
+sqlalchemy>=2.0.36
+psycopg2-binary>=2.9.10
+alembic>=1.14.0
+redis>=5.2.0
+pgvector>=0.3.0
+
+# YAML for agent definitions
+pyyaml>=6.0.2
+
+# HTTP client for tool calls
+httpx>=0.27.2
+requests>=2.32.3
+
+# Slack approval inbox
+slack-sdk>=3.33.4
+
+# Observability
+loguru>=0.7.2
+prometheus-client>=0.21.0
+
+# Auth
+python-jose[cryptography]>=3.3.0
+python-multipart>=0.0.17

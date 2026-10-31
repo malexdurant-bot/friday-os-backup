@@ -1,0 +1,100 @@
+---
+# ============================================================
+# CREW: WEEKLY CONTENT PRODUCTION
+# ============================================================
+# Coordinated weekly content production. CMO defines theme,
+# Trend Spotter surfaces trends, Hook Writer drafts openers,
+# Copy Chief writes bodies, Image Director briefs visuals,
+# Social Media Manager schedules.
+#
+# Triggered: Sunday 5pm cron
+# ============================================================
+
+id: weekly-content-production
+name: "Weekly Content Production Crew"
+description: >
+  Coordinated content production for the upcoming week. CMO directs the team:
+  Trend Spotter, Hook Writer, Copy Chief, Image Director, Social Media Manager.
+  Output: a full week's content calendar drafted and ready for operator review.
+
+triggers_for_workflows:
+  - weekly-content-production
+  - sunday-content-prep
+
+members:
+  - agent_id: auto-cmo
+    role: "Director — set theme, brief specialists, review output"
+    can_delegate: true
+
+  - agent_id: trend-spotter
+    role: "Surface relevant trends from past 7 days"
+    can_delegate: false
+
+  - agent_id: hook-writer
+    role: "Draft 3-5 hook variations per planned post"
+    can_delegate: false
+
+  - agent_id: copy-chief
+    role: "Write body copy for each post — caption, script, or email"
+    can_delegate: false
+
+  - agent_id: image-director
+    role: "Brief visuals — covers, carousels, story templates"
+    can_delegate: false
+
+  - agent_id: auto-social-media-manager
+    role: "Take approved drafts and schedule via Postiz"
+    can_delegate: false
+
+hierarchical: true  # CMO acts as manager, delegates to specialists
+
+tasks:
+  - id: trend_scan
+    agent_id: trend-spotter
+    description: >
+      Scan the past 7 days of trending topics across X, TikTok, Instagram Reels,
+      and YouTube relevant to AI/operator/REI audiences. Surface 3-5 actionable
+      trend angles for the upcoming week.
+    expected_output: "A list of 3-5 trends with: trend description, evidence, recommended angle, format."
+
+  - id: theme_decision
+    agent_id: auto-cmo
+    description: >
+      Based on the Trend Spotter's report and the operator's current goals
+      (cohort launches, paid offer focus), decide the THEME for the upcoming
+      week. Brief each specialist with their assignments.
+    expected_output: "Theme statement + assignments for each specialist."
+
+  - id: hook_drafts
+    agent_id: hook-writer
+    description: >
+      For each planned post (5-7 per week), draft 3-5 hook variations.
+      Label each with mechanism (curiosity, contrarian, story, etc.).
+    expected_output: "5-7 sets of hooks, each with 3-5 variations."
+
+  - id: body_copy
+    agent_id: copy-chief
+    description: >
+      For each post, write the body copy: caption (Instagram), script (Reel),
+      tweet thread (X), email body (newsletter). Use the approved hooks from
+      Hook Writer. Match brand voice.
+    expected_output: "5-7 pieces of body copy ready for review."
+
+  - id: visual_briefs
+    agent_id: image-director
+    description: >
+      For each post, brief the visual: format, focal point, mood, color guide,
+      text overlay, and an image-generation prompt if needed.
+    expected_output: "5-7 visual briefs."
+
+  - id: schedule_proposal
+    agent_id: auto-social-media-manager
+    description: >
+      Propose a posting schedule for the week: which post on which platform
+      at which time. Identify any cross-platform repurposing opportunities.
+    expected_output: "Weekly schedule with platform, time, and format for each post."
+
+output:
+  destination: slack
+  channel: "{SLACK_NOTIFICATIONS_CHANNEL_ID}"
+  format: markdown

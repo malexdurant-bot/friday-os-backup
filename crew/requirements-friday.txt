@@ -1,0 +1,12 @@
+# Minimal direct dependencies for the restricted Friday path.
+# Use requirements-friday.lock to reproduce the verified environment.
+crewai==0.100.0
+fastapi==0.115.8
+uvicorn==0.34.0
+pydantic-settings==2.7.1
+SQLAlchemy==2.0.36
+psycopg2-binary==2.9.10
+PyYAML==6.0.2
+loguru==0.7.3
+slack-sdk==3.33.4
+httpx==0.27.2

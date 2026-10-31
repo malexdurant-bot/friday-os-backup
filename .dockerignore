@@ -1,0 +1,11 @@
+.git
+.env*
+.venv*
+.friday-local
+**/__pycache__
+.pytest_cache
+verification
+tests
+*.tar.gz
+*.sql*
+!deployment/seed/*.sql.gz

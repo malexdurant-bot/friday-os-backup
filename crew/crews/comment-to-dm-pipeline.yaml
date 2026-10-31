@@ -1,0 +1,66 @@
+---
+# ============================================================
+# CREW: COMMENT-TO-DM PIPELINE
+# ============================================================
+# When a comment with a trigger keyword is detected, this crew
+# coordinates the response: DM Agent drafts the lead-magnet
+# delivery, Lead Manager creates/updates the CRM contact,
+# Compliance Agent reviews if it's an outbound message.
+#
+# Triggered: ManyChat webhook (comment match)
+# ============================================================
+
+id: comment-to-dm-pipeline
+name: "Comment-to-DM Pipeline"
+description: >
+  Coordinated response when an Instagram/Facebook comment matches a
+  trigger keyword. DM Agent drafts message, Lead Manager creates CRM
+  contact, Compliance reviews outbound text.
+
+triggers_for_workflows:
+  - comment-to-dm
+  - lead-magnet-delivery
+
+members:
+  - agent_id: auto-dm-agent
+    role: "Draft the lead magnet delivery DM"
+    can_delegate: false
+
+  - agent_id: auto-lead-manager
+    role: "Create or update the CRM contact"
+    can_delegate: false
+
+  - agent_id: auto-compliance
+    role: "Review the draft for compliance flags"
+    can_delegate: false
+
+hierarchical: false  # Sequential
+
+tasks:
+  - id: draft_dm
+    agent_id: auto-dm-agent
+    description: >
+      A user commented with a trigger keyword on a post. Draft a warm, on-brand
+      DM that delivers the relevant lead magnet and asks one qualifying question.
+      Reference their specific comment and any visible info from their bio.
+    expected_output: "A draft DM in the operator's voice, under 4 sentences."
+
+  - id: compliance_review
+    agent_id: auto-compliance
+    description: >
+      Review the drafted DM for compliance: TCPA, CAN-SPAM, Instagram TOS.
+      Flag any issues. Suggest safer alternatives if needed.
+    expected_output: "Pass / Caution / Block decision with reasoning."
+
+  - id: create_crm_contact
+    agent_id: auto-lead-manager
+    description: >
+      Create or update GHL contact for this lead. Source = Instagram comment,
+      tags = lead-magnet-{name}, ig-comment, {trigger-keyword}.
+      Set custom fields: trigger_post_id, comment_text, timestamp.
+    expected_output: "GHL contact ID + confirmation of tags applied."
+
+output:
+  destination: slack
+  channel: "{SLACK_APPROVAL_CHANNEL_ID}"
+  format: markdown

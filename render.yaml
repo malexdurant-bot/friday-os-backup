@@ -1,0 +1,53 @@
+services:
+- type: worker
+  name: friday-worker
+  runtime: docker
+  plan: 0.5c-512mb
+  region: oregon
+  numInstances: 1
+  dockerfilePath: ./Dockerfile.friday
+  dockerContext: .
+  autoDeployTrigger: 'off'
+  envVars:
+  - key: FRIDAY_RESTORE_CHECKPOINT
+    value: milestone-5
+  - key: RUNTIME_PROFILE
+    value: friday
+  - key: FRIDAY_MODEL
+    value: openai/gpt-4.1-mini
+  - key: SLACK_TEAM_ID
+    value: T0CDJH2PRQT
+  - key: SLACK_APP_ID
+    value: A0CDUGGE8S0
+  - key: SLACK_BOT_USER_ID
+    value: U0CDQL1CNE6
+  - key: SLACK_OWNER_USER_ID
+    value: U0CDQJDCMB4
+  - key: SLACK_CHAT_CHANNEL_ID
+    value: C0CDQCBMEJJ
+  - key: SLACK_ENABLED
+    value: 'true'
+  - key: SLACK_SOCKET_MODE
+    value: 'true'
+  - key: OPENROUTER_API_KEY
+    sync: false
+  - key: SLACK_BOT_TOKEN
+    sync: false
+  - key: SLACK_APP_TOKEN
+    sync: false
+  - key: SLACK_SIGNING_SECRET
+    sync: false
+  - key: AGENT_RUNTIME_API_KEY
+    generateValue: true
+  - key: DATABASE_URL
+    fromDatabase:
+      name: friday-db
+      property: connectionString
+databases:
+- name: friday-db
+  databaseName: friday_local
+  user: friday
+  plan: 0.1c-256mb
+  region: oregon
+  diskSizeGB: 1
+  postgresMajorVersion: '16'

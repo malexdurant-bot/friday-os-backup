@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:1
+FROM python:3.12.14-slim
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
+    OTEL_SDK_DISABLED=true CREWAI_TELEMETRY_DISABLED=true \
+    LITELLM_LOCAL_MODEL_COST_MAP=true RUNTIME_PROFILE=friday
+COPY crew/requirements-friday.lock /tmp/requirements-friday.lock
+RUN --mount=type=secret,id=proxy_ca \
+    if [ -f /run/secrets/proxy_ca ]; then export PIP_CERT=/run/secrets/proxy_ca; fi; \
+    pip install --no-cache-dir -r /tmp/requirements-friday.lock && pip check
+RUN useradd --create-home --uid 10001 friday
+COPY --chown=friday:friday crew/ /app/
+COPY --chown=friday:friday agents/friday/ /app/agents/friday/
+COPY --chown=friday:friday deployment/seed/ /app/seed/
+USER friday
+CMD ["python", "friday_worker.py"]

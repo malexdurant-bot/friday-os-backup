@@ -1,0 +1,33 @@
+"""Single Socket Mode worker for hosting; configuration comes from the environment."""
+import asyncio
+import os
+import signal
+
+os.environ["OTEL_SDK_DISABLED"] = "true"
+os.environ["CREWAI_TELEMETRY_DISABLED"] = "true"
+os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "true"
+
+from config import settings
+from main import app, lifespan
+from slack_socket import run
+
+
+async def serve():
+    if not settings.slack_enabled or not settings.slack_socket_mode or not settings.slack_app_token:
+        raise RuntimeError("Complete and enable the Socket Mode configuration before starting")
+    if os.environ.get("FRIDAY_RESTORE_CHECKPOINT") == "milestone-5":
+        from friday_restore import restore
+        await asyncio.to_thread(restore, settings.database_url)
+    async with lifespan(app):
+        receiver = asyncio.create_task(run(app))
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(sig, receiver.cancel)
+        try:
+            await receiver
+        except asyncio.CancelledError:
+            pass
+
+
+if __name__ == "__main__":
+    asyncio.run(serve())
