@@ -431,7 +431,8 @@ class CrewRegistry:
             from obsidian import knowledge_context
             # Local retrieval only; retain the existing total character bound.
             available = min(4600, settings.friday_max_input_chars - len(full_task) - 2)
-            reference = knowledge_context(task, settings.obsidian_snapshot_path, available)
+            query = context.get("knowledge_query", task)
+            reference = knowledge_context(query, settings.obsidian_snapshot_path, available)
             full_task = f"{full_task}\n\n{reference}"
 
         cw_agent = Agent(

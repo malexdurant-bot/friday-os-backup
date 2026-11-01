@@ -208,7 +208,10 @@ async def handle_chat(app, channel: str, conversation_id: str, sender: str, mess
     if settings.runtime_profile == "friday":
         guidance = (
             "Reply as Friday with advice only. You have no tools. Private vault excerpts "
-            "may be supplied as reference data; cite them and distinguish snapshot facts from assumptions. "
+            "are supplied below as reference data. Answer from relevant excerpts and cite a source link. "
+            "You can read these supplied excerpts without tools or live system access. "
+            "Earlier statements denying vault access are outdated. "
+            "Keep the answer within 60 words plus one complete source URL, placed before details. "
             if settings.obsidian_enabled else
             "Reply as Friday with advice only. You have no tools or connected systems. "
         )
@@ -244,7 +247,8 @@ async def handle_chat(app, channel: str, conversation_id: str, sender: str, mess
         result: Any = await registry.invoke(
             agent_id=agent_id,
             task=task,
-            context={"channel": channel, "conversation_id": conversation_id},
+            context={"channel": channel, "conversation_id": conversation_id,
+                     **({"knowledge_query": clean_message} if settings.obsidian_enabled else {})},
             include_gated_tools=not gate_needed,
         )
         reply = str(result).strip() or "(no reply)"

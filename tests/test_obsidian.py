@@ -155,7 +155,7 @@ def test_enabled_registry_injects_bounded_evidence_without_tools(tmp_path, monke
     monkeypatch.setattr(registry, '_build_llm', lambda *a, **k: (
         SimpleNamespace(prompt_tokens=10, completion_tokens=5, reported_cost=0), 'openai/gpt-4.1-mini'))
     registry.set_governance(SimpleNamespace(finish_friday_run=Mock()))
-    result = asyncio.run(registry._invoke_once(FRIDAY_ID, 'retention', {}, run_id=1))
+    result = asyncio.run(registry._invoke_once(FRIDAY_ID, 'Owner question', {'knowledge_query': 'retention'}, run_id=1))
     assert result == 'Synthetic answer'
     assert 'Source:' in observed['task']['description']
     assert 'retention' in observed['task']['description']
@@ -210,3 +210,13 @@ def test_response_size_and_shape_are_bounded():
     with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=[]))) as client:
         with pytest.raises(obsidian.VaultError, match='Invalid'):
             obsidian._get(client, '/commits/main', 100)
+
+
+def test_offer_question_ignores_generic_brain_metadata():
+    data = snapshot()
+    data['notes'] = [
+        {'path': 'AI Instructions/DATA-DICTIONARY.md', 'content': 'business brain source note links business brain'},
+        {'path': 'Products/FRIDAY-AI-OFFERS.md', 'content': '# Friday AI Offers\nCounty Lead Scraper. Friday AI Software.'}]
+    results = obsidian.search_snapshot(data, 'According to my Business Brain, what are my main business offers? Cite one source note link.')
+    assert len(results) == 1
+    assert results[0]['path'] == 'Products/FRIDAY-AI-OFFERS.md'
