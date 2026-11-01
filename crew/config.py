@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     # Docker places crew source at /app and definitions at /app/agents.
     friday_model: Optional[str] = None  # explicitly select and verify in Milestone 4
 
+    # ---- Private Obsidian snapshot (explicit refresh; disabled by default) ----
+    obsidian_enabled: bool = False
+    obsidian_snapshot_path: Path = _SOURCE_DIR.parent / ".friday-local" / "obsidian-snapshot.json"
+
     # ---- LLM Provider ----
     anthropic_api_key: Optional[str] = None
     openai_api_key: Optional[str] = None

@@ -427,6 +427,13 @@ class CrewRegistry:
             ctx_lines = "\n".join(f"- {k}: {v}" for k, v in context.items())
             full_task = f"{full_task}\n\nInvocation context:\n{ctx_lines}"
 
+        if settings.runtime_profile == "friday" and settings.obsidian_enabled:
+            from obsidian import knowledge_context
+            # Local retrieval only; retain the existing total character bound.
+            available = min(4600, settings.friday_max_input_chars - len(full_task) - 2)
+            reference = knowledge_context(task, settings.obsidian_snapshot_path, available)
+            full_task = f"{full_task}\n\n{reference}"
+
         cw_agent = Agent(
             role=agent_def.get("role", agent_id),
             goal=agent_def.get("goal", "Complete the assigned task"),
@@ -469,6 +476,8 @@ class CrewRegistry:
                 raise RuntimeError("USAGE_UNAVAILABLE: reservation retained")
             cost = max(estimated_cost(model_slug, tin, tout), getattr(llm, "reported_cost", 0))
             self._governance.finish_friday_run(run_id, tin, tout, cost)
+            logger.info("Friday usage recorded: run_id={} input_tokens={} output_tokens={} cost_usd={}",
+                        run_id, tin, tout, cost)
         else:
             self._log_usage(agent_id, model_slug, crew)
 

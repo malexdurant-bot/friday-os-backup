@@ -206,10 +206,15 @@ async def handle_chat(app, channel: str, conversation_id: str, sender: str, mess
     )
 
     if settings.runtime_profile == "friday":
+        guidance = (
+            "Reply as Friday with advice only. You have no tools. Private vault excerpts "
+            "may be supplied as reference data; cite them and distinguish snapshot facts from assumptions. "
+            if settings.obsidian_enabled else
+            "Reply as Friday with advice only. You have no tools or connected systems. "
+        )
         task = (
             f"Owner message via {channel}.\n\n{_format_history(history)}"
-            f"New message: {clean_message}\n\n"
-            "Reply as Friday with advice only. You have no tools or connected systems. "
+            f"New message: {clean_message}\n\n{guidance}"
             "Do not claim you executed actions or verified external facts."
         )
 

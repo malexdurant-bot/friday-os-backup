@@ -169,6 +169,10 @@ async def process_record(app, record):
                          error_code=error.code)
         return
     store.transition(event_id, "delivering", "delivered", reply_ts=ts)
+    citations = len(re.findall(
+        r"https://github\.com/malexdurant-bot/marcus-business-brain/blob/[0-9a-f]{40}/", record["reply"]))
+    logger.info("Friday reply delivered: event_id={} brain_enabled={} citations={} chars={}",
+                event_id, settings.obsidian_enabled, citations, len(record["reply"]))
     app.state.audit.log_event(event_type="slack.reply.delivered", agent_id="friday-operations",
                              payload={"event_id": event_id, "reply_ts": ts})
 
