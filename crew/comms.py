@@ -223,6 +223,19 @@ async def handle_chat(app, channel: str, conversation_id: str, sender: str, mess
             "Do not claim you executed actions or verified external facts."
         )
 
+    if settings.runtime_profile == "friday" and settings.friday_kpis_enabled:
+        from ghl_kpis import is_kpi_request, report_for_message, KpiSourceError
+        if is_kpi_request(clean_message):
+            import asyncio
+            try:
+                reply = await asyncio.to_thread(report_for_message, clean_message, settings)
+            except KpiSourceError:
+                reply = "I couldn't read the configured GHL KPI sources. No counts are available; please check reporting access."
+            _store(conversation_id, channel, "assistant", agent_id, reply)
+            audit.log_event(event_type="kpi.report", agent_id=agent_id,
+                            invocation_id=invocation_id, payload={"channel": channel})
+            return {"agent_id": agent_id, "reply": reply}
+
     # Same governance gate as /agents/{id}/invoke — chat is not a side door.
     # But the gate keys off agent CAPABILITY, so plain questions to an
     # email-capable agent would gate too: only gate when the message asks for

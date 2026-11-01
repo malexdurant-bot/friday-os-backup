@@ -46,8 +46,9 @@ is the first. Coverage must span the actual reporting interval, ending at the
 observation time for to-date reports. Historical backfills require equivalent
 verified evidence. Current tags/stages cannot reconstruct absent history.
 
-No adapter, HTTP endpoint, webhook, model tool, scheduler or database migration
-has been enabled. The accepted live-vault Slack deployment remains intact.
+The read-only adapter and deterministic Slack handler are now implemented, behind
+FRIDAY_KPIS_ENABLED. They bypass the model for counts. No new HTTP endpoint,
+webhook, model tool, scheduler or database migration is introduced.
 
 ## Current connection blocker
 
@@ -92,3 +93,62 @@ readiness. Each customer's CRM record must map to their own account or to an
 explicitly verified readiness marker with a completion date. The public active
 numbers endpoint does not by itself prove A2P approval. No customer SMS will be
 sent as a test to infer readiness.
+
+
+## Verified GHL setup and reporting implementation — November 1
+
+The owner saved the matching credential on Render. Read-only pipeline, custom
+field, tag and transaction requests now return HTTP 200 for the confirmed
+location. Created these four contact field DEFINITIONS; existing contact record
+values were not changed:
+
+| Name | ID | Usage |
+| --- | --- | --- |
+| Friday AI Warm Conversation At | Pe6TDMy1BlTJM0ZivdlS | First verified warm conversation timestamp |
+| Friday AI A2P Completed At | G5c53yODiVBN0kG50h5Z | Customer's confirmed A2P completion timestamp |
+| Friday AI SMS Usable At | Y40urFgICFf2r1OjgCRz | Customer's confirmed usable-SMS timestamp |
+| Friday AI Customer Location ID | QawtPTtzLjGIzTYOg0rp | That customer's own sub-account ID |
+
+Dates are ISO 8601 text with an explicit timezone. Only mark warmth after a
+real two-way exchange about Friday AI showing relevant need or buying interest.
+Auto replies, unsubscribes, wrong numbers, new contacts and unrelated seller
+conversations do not qualify. Existing real-estate/JARVIS warm tags are not used
+as Friday AI warmth evidence. The first warm timestamp is immutable for KPI
+counting; future workflow design must preserve that first transition.
+
+These fields are initially empty. No automatic warmth classifier or A2P status
+poller is deployed by this phase. An operator can record verified dates in GHL;
+future lead/onboarding workflows will populate them automatically. The report
+labels absent records unavailable, not zero. No historical dates were inferred
+from current tags, stages or contact creation dates.
+
+The read client allows only POST /contacts/search (read-only search) and GET
+/payments/transactions, fixes the configured location, strips personal details,
+checks full bounded pagination and refuses partial or cross-tenant results.
+Warm/readiness searches use the dedicated custom-field existence filter, verified
+live, avoiding a full contact database scan. Successful payment history is read
+completely so renewals do not count as new customers. Non-live, failed and
+zero-value payments do not qualify. Customer timestamps use GHL's transaction
+createdAt for successful payments; this is transaction-recorded date, not a
+separately verified payment-settlement timestamp. Counts are account-wide; there
+is no unapproved product-specific payment filter.
+
+Live read check: week-to-date October 26 to November 1 (America/Los_Angeles),
+new paying customers = 0; warm-conversation and onboarding signals have no
+recorded events yet. Two historical live successful payment records are present,
+both dated October 15; no individual customer details were printed or sent to
+OpenRouter. Production reports also display local PST/PDT bounds and freshness.
+
+Enable on the existing Render worker using FRIDAY_KPIS_ENABLED=true, existing
+GHL_API_KEY/GHL_LOCATION_ID, KPI_TIMEZONE=America/Los_Angeles, KPI_TRACKING_SINCE
+as the UTC activation instant, and KPI_WARM_FIELD_ID/KPI_A2P_FIELD_ID/
+KPI_SMS_FIELD_ID/KPI_CUSTOMER_LOCATION_FIELD_ID from the table above.
+
+Owner commands: `@Friday KPIs today`, `@Friday KPIs this week`, or
+`@Friday KPIs this month`. Historical relative windows such as last month are
+explicitly refused rather than silently showing another period. Reports do not
+consume a model call or model budget. Normal chat and live vault access remain.
+
+Rollback: FRIDAY_KPIS_ENABLED=false and redeploy. Retain the tracking fields and
+any recorded dates; do not delete fields after customer data has been entered.
+Lead-generation, appointment and purchase workflows remain the next phase.

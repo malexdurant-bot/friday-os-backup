@@ -5,6 +5,7 @@ Loads environment variables via Pydantic settings.
 """
 
 import os
+from datetime import datetime
 
 # Set before any lazy CrewAI import. Do not export task content as telemetry.
 os.environ["OTEL_SDK_DISABLED"] = "true"
@@ -40,6 +41,17 @@ class Settings(BaseSettings):
     obsidian_github_token: Optional[SecretStr] = None
     obsidian_seed_path: Optional[Path] = None
     obsidian_snapshot_path: Path = _SOURCE_DIR.parent / ".friday-local" / "obsidian-snapshot.json"
+
+    # ---- Deterministic, read-only GHL KPI reporting ----
+    friday_kpis_enabled: bool = False
+    ghl_api_key: Optional[SecretStr] = None
+    ghl_location_id: Optional[str] = None
+    kpi_timezone: str = "America/Los_Angeles"
+    kpi_tracking_since: Optional[datetime] = None
+    kpi_warm_field_id: Optional[str] = None
+    kpi_a2p_field_id: Optional[str] = None
+    kpi_sms_field_id: Optional[str] = None
+    kpi_customer_location_field_id: Optional[str] = None
 
     # ---- LLM Provider ----
     anthropic_api_key: Optional[str] = None

@@ -7,7 +7,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'crew'))
 # Clear only task-specific settings during tests; never print inherited secrets.
 for key in list(os.environ):
-    if key.upper().startswith(('SLACK_', 'OBSIDIAN_')) or key.upper() in {'RUNTIME_PROFILE', 'AGENTS_PATH', 'FRIDAY_MODEL', 'OPENROUTER_API_KEY', 'AGENT_RUNTIME_API_KEY'}:
+    if key.upper().startswith(('SLACK_', 'OBSIDIAN_', 'GHL_', 'KPI_')) or key.upper() in {'RUNTIME_PROFILE', 'AGENTS_PATH', 'FRIDAY_MODEL', 'OPENROUTER_API_KEY', 'AGENT_RUNTIME_API_KEY', 'FRIDAY_KPIS_ENABLED'}:
         os.environ.pop(key)
 
 @pytest.fixture(autouse=True)
