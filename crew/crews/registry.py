@@ -380,6 +380,14 @@ class CrewRegistry:
         # event-loop timeout abandons the thread while allowing another run.
         import asyncio
         def guarded():
+            if settings.obsidian_enabled and settings.obsidian_live:
+                from obsidian import refresh_live_snapshot
+                token = settings.obsidian_github_token
+                fresh = refresh_live_snapshot(
+                    settings.obsidian_snapshot_path,
+                    token.get_secret_value() if token else None, settings.obsidian_seed_path)
+                logger.info("Business Brain verified: revision={} notes={} downloaded={}",
+                            fresh["revision"], fresh["notes"], fresh["downloaded_notes"])
             with self._governance.friday_run(
                 agent_id, model, settings.friday_run_reservation_usd,
                 settings.max_daily_llm_spend_usd, settings.max_tasks_per_hour,

@@ -17,6 +17,12 @@ async def serve():
     if not settings.slack_enabled or not settings.slack_socket_mode or not settings.slack_app_token:
         raise RuntimeError("Complete and enable the Socket Mode configuration before starting")
     if settings.obsidian_enabled:
+        if settings.obsidian_live:
+            from obsidian import refresh_live_snapshot
+            token = settings.obsidian_github_token
+            await asyncio.to_thread(
+                refresh_live_snapshot, settings.obsidian_snapshot_path,
+                token.get_secret_value() if token else None, settings.obsidian_seed_path)
         from obsidian import load_snapshot
         snapshot = load_snapshot(settings.obsidian_snapshot_path)
         logger.info("Business Brain ready: notes={} revision={}",

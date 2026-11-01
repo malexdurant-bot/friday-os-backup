@@ -220,3 +220,131 @@ def test_offer_question_ignores_generic_brain_metadata():
     results = obsidian.search_snapshot(data, 'According to my Business Brain, what are my main business offers? Cite one source note link.')
     assert len(results) == 1
     assert results[0]['path'] == 'Products/FRIDAY-AI-OFFERS.md'
+
+
+def test_live_check_each_time_avoids_reloading_unchanged_notes(tmp_path, monkeypatch):
+    observed = github(monkeypatch)
+    path = tmp_path / 'live.json'
+    first = obsidian.refresh_live_snapshot(path, 'token')
+    assert first['changed'] and len(observed) == 3
+    second = obsidian.refresh_live_snapshot(path, 'token')
+    assert not second['changed'] and second['downloaded_notes'] == 0
+    assert len(observed) == 4  # every question still verifies main with GitHub
+    assert obsidian.load_snapshot(path)['checked_at'] == second['checked_at']
+
+
+def test_live_uses_readonly_seed_then_writable_private_cache(tmp_path, monkeypatch):
+    observed = github(monkeypatch)
+    seed = tmp_path / 'seed.json'
+    obsidian.refresh_snapshot(seed, 'token')
+    before = seed.read_bytes()
+    seed.chmod(0o400)
+    path = tmp_path / 'cache' / 'live.json'
+    result = obsidian.refresh_live_snapshot(path, 'token', seed)
+    assert not result['changed'] and len(observed) == 4
+    assert seed.read_bytes() == before
+    assert path.stat().st_mode & 0o777 == 0o600
+
+
+def test_live_failure_does_not_answer_with_stale_cache(tmp_path, monkeypatch):
+    path = write_snapshot(tmp_path)
+    before = path.read_bytes()
+    original = httpx.Client
+    def denied(request): return httpx.Response(401, json={'private': 'do not expose'})
+    monkeypatch.setattr(obsidian.httpx, 'Client', lambda **kwargs: original(
+        transport=httpx.MockTransport(denied), **kwargs))
+    with pytest.raises(obsidian.VaultError, match='HTTP 401'):
+        obsidian.refresh_live_snapshot(path, 'token')
+    assert path.read_bytes() == before
+
+
+def test_live_refresh_occurs_before_model_reservation(tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    from pydantic import SecretStr
+    registry = CrewRegistry(Path(__file__).resolve().parents[1] / 'agents')
+    registry.load_all()
+    monkeypatch.setattr(settings, 'friday_model', 'openai/gpt-4.1-mini')
+    monkeypatch.setattr(settings, 'obsidian_enabled', True)
+    monkeypatch.setattr(settings, 'obsidian_live', True)
+    monkeypatch.setattr(settings, 'obsidian_github_token', SecretStr('token'))
+    order = []
+    def refresh(*args):
+        order.append('refresh')
+        return {'revision': 'a' * 40, 'notes': 1, 'downloaded_notes': 0}
+    monkeypatch.setattr(obsidian, 'refresh_live_snapshot', refresh)
+    @contextmanager
+    def reserve(*args):
+        order.append('reserve')
+        yield 123
+    registry.set_governance(SimpleNamespace(enabled=True, friday_run=reserve))
+    async def invoke(*a, **k):
+        order.append('model')
+        return 'grounded'
+    monkeypatch.setattr(registry, '_invoke_once', invoke)
+    assert asyncio.run(registry.invoke(FRIDAY_ID, 'What do we sell?', {})) == 'grounded'
+    assert order == ['refresh', 'reserve', 'model']
+    order.clear()
+    def fail(*args):
+        order.append('refresh')
+        raise obsidian.VaultError('unavailable')
+    monkeypatch.setattr(obsidian, 'refresh_live_snapshot', fail)
+    with pytest.raises(obsidian.VaultError):
+        asyncio.run(registry.invoke(FRIDAY_ID, 'What do we sell?', {}))
+    assert order == ['refresh']
+
+
+def test_token_never_shows_in_settings_repr():
+    config = Settings(_env_file=None, obsidian_github_token='synthetic-private-token')
+    assert 'synthetic-private-token' not in repr(config)
+
+
+def test_live_updates_additions_deletions_and_reuses_unchanged_blobs(tmp_path, monkeypatch):
+    state = {'revision': 'a' * 40, 'notes': {
+        'Stable.md': b'Kept intact', 'Changed.md': b'Old price', 'Deleted.md': b'Remove me'}}
+    requests = []
+    def handler(request):
+        requests.append(request.url.path)
+        if request.url.path.endswith('/commits/main'):
+            data = {'sha': state['revision'], 'commit': {'tree': {'sha': 'd' * 40}}}
+        elif '/git/trees/' in request.url.path:
+            data = {'truncated': False, 'tree': [
+                {'path': name, 'type': 'blob', 'mode': '100644', 'size': len(raw), 'sha': obsidian._blob_sha(raw)}
+                for name, raw in state['notes'].items()]}
+        else:
+            raw = next(raw for raw in state['notes'].values() if request.url.path.endswith(obsidian._blob_sha(raw)))
+            data = {'encoding': 'base64', 'content': base64.b64encode(raw).decode()}
+        return httpx.Response(200, json=data)
+    original = httpx.Client
+    monkeypatch.setattr(obsidian.httpx, 'Client', lambda **kwargs: original(
+        transport=httpx.MockTransport(handler), **kwargs))
+    path = tmp_path / 'live.json'
+    assert obsidian.refresh_live_snapshot(path, 'token')['downloaded_notes'] == 3
+    state['revision'] = 'e' * 40
+    state['notes'] = {'Stable.md': b'Kept intact', 'Changed.md': b'New price', 'Added.md': b'New service'}
+    requests.clear()
+    report = obsidian.refresh_live_snapshot(path, 'token')
+    assert report['downloaded_notes'] == 2
+    data = obsidian.load_snapshot(path)
+    assert data['revision'] == 'e' * 40
+    assert {n['path'] for n in data['notes']} == {'Stable.md', 'Changed.md', 'Added.md'}
+    assert next(n['content'] for n in data['notes'] if n['path'] == 'Changed.md') == 'New price'
+    assert sum('/git/blobs/' in request for request in requests) == 2
+
+
+def test_ordinary_question_automatically_uses_brain_query(monkeypatch):
+    import comms
+    from unittest.mock import AsyncMock
+    registry = CrewRegistry(Path(__file__).resolve().parents[1] / 'agents')
+    registry.load_all()
+    registry.invoke = AsyncMock(return_value='Grounded answer')
+    monkeypatch.setattr(settings, 'obsidian_enabled', True)
+    monkeypatch.setattr(settings, 'obsidian_live', True)
+    monkeypatch.setattr(comms, '_load_history', lambda _: [])
+    monkeypatch.setattr(comms, '_store', Mock())
+    app = SimpleNamespace(state=SimpleNamespace(registry=registry, audit=Mock()))
+    question = 'What do I charge for Friday AI Software?'
+    asyncio.run(comms.handle_chat(app, 'slack', 'thread', 'owner', question))
+    args = registry.invoke.call_args.kwargs
+    assert args['context']['knowledge_query'] == question
+    assert 'automatically' in args['task']
+    assert 'Business Brain' not in question

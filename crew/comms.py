@@ -211,7 +211,9 @@ async def handle_chat(app, channel: str, conversation_id: str, sender: str, mess
             "are supplied below as reference data. Answer from relevant excerpts and cite a source link. "
             "You can read these supplied excerpts without tools or live system access. "
             "Earlier statements denying vault access are outdated. "
-            "Keep the answer within 60 words plus one complete source URL, placed before details. "
+            "Consult the supplied Business Brain evidence automatically for business questions; "
+            "the owner need not ask you to search. Use direct answers, not search instructions. "
+            "Cite relevant source links for the facts you use. Keep answers concise. "
             if settings.obsidian_enabled else
             "Reply as Friday with advice only. You have no tools or connected systems. "
         )
@@ -260,7 +262,11 @@ async def handle_chat(app, channel: str, conversation_id: str, sender: str, mess
             invocation_id=invocation_id,
             payload={"error_type": type(e).__name__},
         )
-        reply = "I could not complete this request. No external actions were performed. Please ask the operator to review runtime status before retrying."
+        from obsidian import VaultError
+        if isinstance(e, VaultError) and settings.obsidian_live:
+            reply = "I couldn't verify the latest Business Brain notes, so I haven't answered from an older copy. Please try again shortly."
+        else:
+            reply = "I could not complete this request. No external actions were performed. Please ask the operator to review runtime status before retrying."
 
     _store(conversation_id, channel, "assistant", agent_id, reply)
     audit.log_event(

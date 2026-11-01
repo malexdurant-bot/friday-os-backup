@@ -14,7 +14,7 @@ os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "true"
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional, Literal
 from pathlib import Path
-from pydantic import Field
+from pydantic import Field, SecretStr
 
 
 _SOURCE_DIR = Path(__file__).resolve().parent
@@ -36,6 +36,9 @@ class Settings(BaseSettings):
 
     # ---- Private Obsidian snapshot (explicit refresh; disabled by default) ----
     obsidian_enabled: bool = False
+    obsidian_live: bool = False
+    obsidian_github_token: Optional[SecretStr] = None
+    obsidian_seed_path: Optional[Path] = None
     obsidian_snapshot_path: Path = _SOURCE_DIR.parent / ".friday-local" / "obsidian-snapshot.json"
 
     # ---- LLM Provider ----
